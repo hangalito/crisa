@@ -1,65 +1,107 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo, useState } from "react";
+
+import { ChatContainer } from "@/components/chat/ChatContainer";
+import { InputBar } from "@/components/chat/InputBar";
+import { StatusIndicator } from "@/components/chat/StatusIndicator";
+import { ChatApiError, sendMessageToAgent } from "@/lib/chat-api";
+import type { ChatMessage, RequestStatus } from "@/types/chat";
+
+const INITIAL_MESSAGE: ChatMessage = {
+  id: "welcome",
+  role: "agent",
+  text: "Hi, I am Crisa. Ask me anything and I will do my best to help.",
+  createdAt: Date.now(),
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function toSystemErrorMessage(text: string): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    role: "system",
+    text,
+    createdAt: Date.now(),
+  };
+}
+
+export default function HomePage() {
+  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const [status, setStatus] = useState<RequestStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState<string>();
+
+  const isRequestInProgress = status === "sending" || status === "waiting";
+
+  const onSendMessage = async (text: string) => {
+    setErrorMessage(undefined);
+    setStatus("sending");
+
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      text,
+      createdAt: Date.now(),
+    };
+
+    setMessages((current) => [...current, userMessage]);
+
+    try {
+      // Keep feedback explicit by surfacing both async steps.
+      await sleep(180);
+      setStatus("waiting");
+
+      const reply = await sendMessageToAgent(text);
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "agent",
+          text: reply,
+          createdAt: Date.now(),
+        },
+      ]);
+      setStatus("idle");
+    } catch (error) {
+      const friendlyMessage =
+        error instanceof ChatApiError
+          ? error.message
+          : "Connection lost. Please check your network and try again.";
+
+      setMessages((current) => [
+        ...current,
+        toSystemErrorMessage(`Unable to complete request: ${friendlyMessage}`),
+      ]);
+      setErrorMessage(friendlyMessage);
+      setStatus("error");
+    }
+  };
+
+  const headerSubtitle = useMemo(() => {
+    if (status === "sending") return "Sending message...";
+    if (status === "waiting") return "Waiting for response...";
+    if (status === "error") return "Connection lost";
+    return "Frontend-only phase";
+  }, [status]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex min-h-dvh flex-col bg-app-gradient text-slate-900 transition-colors dark:text-slate-100">
+      <header className="border-b border-pink-100/80 bg-white/75 px-4 py-3 backdrop-blur dark:border-pink-900/40 dark:bg-slate-950/75">
+        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-pink-700 dark:text-pink-300">Crisa</h1>
+            <p className="text-xs text-slate-600 dark:text-slate-400">{headerSubtitle}</p>
+          </div>
+          <StatusIndicator status={status} errorMessage={errorMessage} />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </header>
+
+      <ChatContainer messages={messages} isLoading={isRequestInProgress} />
+
+      <footer className="sticky bottom-0 border-t border-pink-100/80 bg-white/70 px-3 py-3 backdrop-blur dark:border-pink-900/40 dark:bg-slate-950/70 sm:px-5">
+        <InputBar disabled={isRequestInProgress} onSendMessage={onSendMessage} />
+      </footer>
+    </main>
   );
 }
