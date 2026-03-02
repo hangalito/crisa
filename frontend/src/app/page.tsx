@@ -14,7 +14,7 @@ const INITIAL_MESSAGE: ChatMessage = {
   id: "welcome",
   role: "agent",
   text: "Olá, eu sou a Crisa. Pergunta-me qualquer coisa e farei o meu melhor para ajudar.",
-  createdAt: Date.now(),
+  createdAt: 0, // Using 0 for initial stable timestamp
 };
 
 export default function HomePage() {
