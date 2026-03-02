@@ -47,7 +47,7 @@ async def chat_proxy(
     # Filter out sensitive fields if any were passed from frontend (though they shouldn't be)
     # body.pop("options", None) # Optional: could restrict options here
     
-    client = httpx.AsyncClient(timeout=60.0)
+    client = httpx.AsyncClient(timeout=300.0)
     
     async def stream_generator():
         try:
