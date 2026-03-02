@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Crisa Private Backend"
@@ -28,15 +28,11 @@ class Settings(BaseSettings):
     
     # Frontend/CORS
     ENVIRONMENT: str = "development"
-    FRONTEND_URL: str = "http://localhost:3000"
-    PRODUCTION_FRONTEND_URL: Optional[str] = None
+    ALLOWED_ORIGINS: str = "http://localhost:3000"
     
     @property
     def AUTHORIZED_ORIGINS(self) -> List[str]:
-        origins = [self.FRONTEND_URL]
-        if self.PRODUCTION_FRONTEND_URL:
-            origins.append(self.PRODUCTION_FRONTEND_URL)
-        return origins
+        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
     
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
