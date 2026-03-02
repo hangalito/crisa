@@ -72,7 +72,7 @@ export default function HomePage() {
 
     const timeoutId = setTimeout(() => {
       abortController.abort();
-    }, 60000);
+    }, 300000); // 5 minutes
 
     try {
       setStatus("waiting");

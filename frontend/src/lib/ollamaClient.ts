@@ -1,4 +1,6 @@
 import { OLLAMA_CONFIG } from "@/config/ollama";
+import api from "./axios";
+import { isAxiosError } from "axios";
 
 export interface OllamaMessage {
     role: "system" | "user" | "assistant";
@@ -34,36 +36,24 @@ export async function* sendMessage(
         content: m.content,
     }));
 
-    const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include", // Important for sending the JWT cookie
-        body: JSON.stringify({
-            ...OLLAMA_CONFIG,
-            messages: fullMessages,
-            stream: true,
-        }),
+    const response = await api.post(apiUrl, {
+        ...OLLAMA_CONFIG,
+        messages: fullMessages,
+        stream: true,
+    }, {
+        responseType: 'stream',
+        adapter: 'fetch', // Use fetch adapter for browser streaming support
         signal,
     });
 
-    if (!response.ok) {
-        let errorDetail = "";
-        try {
-            const errorJson = await response.json();
-            errorDetail = errorJson.error || response.statusText;
-        } catch {
-            errorDetail = response.statusText;
-        }
-        throw new OllamaClientError(errorDetail || `HTTP error! status: ${response.status}`);
+    // In Axios/Fetch adapter, response.data should be the stream
+    const stream = response.data;
+
+    if (!stream) {
+        throw new OllamaClientError("Response data is null");
     }
 
-    if (!response.body) {
-        throw new OllamaClientError("Response body is null");
-    }
-
-    const reader = response.body.getReader();
+    const reader = stream.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
 
