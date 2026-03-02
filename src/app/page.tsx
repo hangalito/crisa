@@ -89,7 +89,9 @@ export default function HomePage() {
         if (error.message === "Backend not configured.") {
           friendlyMessage = "Backend not configured.";
         } else if (error.message === "Request timed out") {
-          friendlyMessage = "Request timed out. Please try again.";
+          friendlyMessage = "Connection problem (timeout). Please try again.";
+        } else if (error.message !== "Network failure") {
+          friendlyMessage = error.message;
         }
       }
 

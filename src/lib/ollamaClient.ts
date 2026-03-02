@@ -119,11 +119,24 @@ export async function* sendMessage(
         }
     } catch (error) {
         if (error instanceof OllamaClientError) throw error;
-        if (error instanceof Error && error.name === "AbortError") {
+
+        const isAbortError = error instanceof Error && (
+            error.name === "AbortError" ||
+            error.name === "TimeoutError" ||
+            error.message.includes("aborted") ||
+            error.message.includes("signal")
+        );
+
+        if (isAbortError) {
             throw new OllamaClientError("Request timed out");
         }
+
         throw new OllamaClientError("Network failure", error);
     } finally {
-        reader.releaseLock();
+        try {
+            reader.releaseLock();
+        } catch {
+            // Ignore lock release errors during cleanup
+        }
     }
 }
