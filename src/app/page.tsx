@@ -1,65 +1,140 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo, useState, useRef } from "react";
+
+import { ChatContainer } from "@/components/chat/ChatContainer";
+import { InputBar } from "@/components/chat/InputBar";
+import { StatusIndicator } from "@/components/chat/StatusIndicator";
+import { sendMessage, OllamaClientError } from "@/lib/ollamaClient";
+import type { ChatMessage, RequestStatus } from "@/types/chat";
+
+const INITIAL_MESSAGE: ChatMessage = {
+  id: "welcome",
+  role: "agent",
+  text: "Hi, I am Crisa. Ask me anything and I will do my best to help.",
+  createdAt: Date.now(),
+};
+
+export default function HomePage() {
+  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const [status, setStatus] = useState<RequestStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState<string>();
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const isRequestInProgress = status === "sending" || status === "waiting" || status === "streaming";
+
+  const onSendMessage = async (text: string) => {
+    setErrorMessage(undefined);
+    setStatus("sending");
+
+    const userMessageId = crypto.randomUUID();
+    const assistantMessageId = crypto.randomUUID();
+
+    const userMessage: ChatMessage = {
+      id: userMessageId,
+      role: "user",
+      text,
+      createdAt: Date.now(),
+    };
+
+    setMessages((current) => [
+      ...current,
+      userMessage,
+      {
+        id: assistantMessageId,
+        role: "agent",
+        text: "",
+        createdAt: Date.now(),
+      },
+    ]);
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, 60000);
+
+    try {
+      setStatus("waiting");
+
+      const stream = sendMessage(
+        messages.concat(userMessage).map((m) => ({
+          role: m.role,
+          content: m.text,
+        })),
+        abortController.signal
+      );
+
+      let fullText = "";
+      for await (const chunk of stream) {
+        clearTimeout(timeoutId);
+        if (status !== "streaming") setStatus("streaming");
+        fullText += chunk;
+        setMessages((current) =>
+          current.map((m) =>
+            m.id === assistantMessageId ? { ...m, text: fullText } : m
+          )
+        );
+      }
+
+      setStatus("idle");
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Chat Error:", error);
+      }
+
+      let friendlyMessage = "Connection problem. Please try again.";
+      if (error instanceof OllamaClientError) {
+        if (error.message === "Backend not configured.") {
+          friendlyMessage = "Backend not configured.";
+        } else if (error.message === "Request timed out") {
+          friendlyMessage = "Connection problem (timeout). Please try again.";
+        } else if (error.message !== "Network failure") {
+          friendlyMessage = error.message;
+        }
+      }
+
+      setMessages((current) =>
+        current.map((m) =>
+          m.id === assistantMessageId
+            ? { ...m, text: friendlyMessage }
+            : m
+        )
+      );
+      setErrorMessage(friendlyMessage);
+      setStatus("error");
+    } finally {
+      clearTimeout(timeoutId);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const headerSubtitle = useMemo(() => {
+    if (status === "sending") return "Sending message...";
+    if (status === "waiting") return "Waiting for response...";
+    if (status === "streaming") return "Crisa is thinking...";
+    if (status === "error") return errorMessage || "Connection lost";
+    return "Online";
+  }, [status, errorMessage]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex min-h-dvh flex-col bg-app-gradient text-slate-900 transition-colors dark:text-slate-100">
+      <header className="border-b border-pink-100/80 bg-white/75 px-4 py-3 backdrop-blur dark:border-pink-900/40 dark:bg-slate-950/75">
+        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-pink-700 dark:text-pink-300">Crisa</h1>
+            <p className="text-xs text-slate-600 dark:text-slate-400">{headerSubtitle}</p>
+          </div>
+          <StatusIndicator status={status} errorMessage={errorMessage} />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </header>
+
+      <ChatContainer messages={messages} isLoading={status === "waiting"} />
+
+      <footer className="sticky bottom-0 border-t border-pink-100/80 bg-white/70 px-3 py-3 backdrop-blur dark:border-pink-900/40 dark:bg-slate-950/70 sm:px-5">
+        <InputBar disabled={isRequestInProgress} onSendMessage={onSendMessage} />
+      </footer>
+    </main>
   );
 }
