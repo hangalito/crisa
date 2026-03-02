@@ -27,7 +27,16 @@ class Settings(BaseSettings):
     OLLAMA_API_URL: str
     
     # Frontend/CORS
+    ENVIRONMENT: str = "development"
     FRONTEND_URL: str = "http://localhost:3000"
+    PRODUCTION_FRONTEND_URL: Optional[str] = None
+    
+    @property
+    def AUTHORIZED_ORIGINS(self) -> List[str]:
+        origins = [self.FRONTEND_URL]
+        if self.PRODUCTION_FRONTEND_URL:
+            origins.append(self.PRODUCTION_FRONTEND_URL)
+        return origins
     
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

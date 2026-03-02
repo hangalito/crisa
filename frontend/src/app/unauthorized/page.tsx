@@ -12,16 +12,16 @@ export default function UnauthorizedPage() {
                     </svg>
                 </div>
 
-                <h1 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">Access Denied</h1>
+                <h1 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">Acesso Negado</h1>
                 <p className="mb-8 text-slate-600 dark:text-slate-400">
-                    Your email address is not authorized to access this application.
+                    O teu endereço de e-mail não está autorizado a aceder a esta aplicação.
                 </p>
 
                 <Link
                     href="/login"
                     className="inline-block rounded-2xl bg-pink-600 px-8 py-3 font-semibold text-white transition hover:bg-pink-500 dark:bg-pink-500 dark:hover:bg-pink-400"
                 >
-                    Try a Different Email
+                    Tentar um E-mail Diferente
                 </Link>
             </div>
         </div>

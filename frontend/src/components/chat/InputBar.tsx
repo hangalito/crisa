@@ -38,7 +38,7 @@ export function InputBar({ disabled, onSendMessage }: InputBarProps) {
       className="mx-auto flex w-full max-w-4xl items-end gap-2 rounded-[24px] border border-pink-200/70 bg-white/90 p-2 shadow-[0_8px_24px_rgba(236,72,153,0.12)] backdrop-blur dark:border-pink-900/40 dark:bg-slate-950/90"
     >
       <label htmlFor="message" className="sr-only">
-        Type your message
+        Escreve a tua mensagem
       </label>
       <textarea
         id="message"
@@ -46,7 +46,7 @@ export function InputBar({ disabled, onSendMessage }: InputBarProps) {
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Write a message to Crisa..."
+        placeholder="Escreve uma mensagem para a Crisa..."
         rows={1}
         disabled={disabled}
         className={[
@@ -63,7 +63,7 @@ export function InputBar({ disabled, onSendMessage }: InputBarProps) {
         disabled={disabled}
         className="h-11 rounded-2xl bg-pink-600 px-4 text-sm font-semibold text-white transition hover:bg-pink-500 disabled:cursor-not-allowed disabled:bg-pink-300 dark:bg-pink-500 dark:hover:bg-pink-400 dark:disabled:bg-pink-800"
       >
-        {disabled ? "Sending..." : "Send"}
+        {disabled ? "A enviar..." : "Enviar"}
       </button>
     </form>
   );

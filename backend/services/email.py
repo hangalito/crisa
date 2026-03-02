@@ -4,8 +4,8 @@ from core.config import settings
 
 async def send_otp_email(email: str, otp: str):
     """Send OTP code via SMTP."""
-    message = MIMEText(f"Your Crisa access code is: {otp}\n\nThis code expires in 10 minutes.")
-    message["Subject"] = "Crisa Access Code"
+    message = MIMEText(f"O teu código de acesso Crisa é: {otp}\n\nEste código expira em 10 minutos.")
+    message["Subject"] = "Código de Acesso Crisa"
     message["From"] = settings.SMTP_USER
     message["To"] = email
     

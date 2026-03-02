@@ -12,20 +12,20 @@ async def get_current_user(request: Request):
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
+            detail="Não autenticado"
         )
     
     payload = decode_access_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or invalid"
+            detail="Sessão expirada ou inválida"
         )
     
     if payload["sub"] not in settings.AUTHORIZED_EMAILS:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Unauthorized email"
+            detail="E-mail não autorizado"
         )
         
     return payload["sub"]
@@ -58,7 +58,7 @@ async def chat_proxy(
                 headers={"Content-Type": "application/json"}
             ) as response:
                 if response.status_code != 200:
-                    yield b'{"error": "Backend communication failed"}'
+                    yield '{"error": "Falha na comunicação com o servidor de IA"}'.encode('utf-8')
                     return
                 
                 async for chunk in response.aiter_bytes():
