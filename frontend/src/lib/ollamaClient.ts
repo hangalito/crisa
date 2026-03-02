@@ -27,17 +27,7 @@ export async function* sendMessage(
     messages: { role: string; content: string }[],
     signal?: AbortSignal
 ): AsyncGenerator<string, void, unknown> {
-    let apiUrl = process.env.NEXT_PUBLIC_OLLAMA_API_URL;
-
-    if (!apiUrl) {
-        throw new OllamaClientError("Backend not configured.");
-    }
-
-    // Ensure we are calling the correct endpoint as per requirements
-    // If the URL is just the base (e.g. http://localhost:11434), append /api/chat
-    if (!apiUrl.endsWith("/api/chat") && !apiUrl.endsWith("/api/chat/")) {
-        apiUrl = apiUrl.replace(/\/$/, "") + "/api/chat";
-    }
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/chat`;
 
     const fullMessages: OllamaMessage[] = messages.map((m) => ({
         role: m.role === "agent" ? ("assistant" as const) : (m.role as "user" | "system"),
@@ -49,6 +39,7 @@ export async function* sendMessage(
         headers: {
             "Content-Type": "application/json",
         },
+        credentials: "include", // Important for sending the JWT cookie
         body: JSON.stringify({
             ...OLLAMA_CONFIG,
             messages: fullMessages,
