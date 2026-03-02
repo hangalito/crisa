@@ -21,10 +21,14 @@ export function StatusIndicator({
     );
   }
 
+  let statusText = "Waiting for response...";
+  if (status === "sending") statusText = "Sending message...";
+  if (status === "streaming") statusText = "Crisa is thinking...";
+
   return (
     <div className="flex items-center gap-2 rounded-2xl border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-medium text-pink-800 dark:border-pink-700/40 dark:bg-pink-900/20 dark:text-pink-200">
       <span className="h-2 w-2 animate-pulse rounded-full bg-current" aria-hidden />
-      <span>{status === "sending" ? "Sending message..." : "Waiting for response..."}</span>
+      <span>{statusText}</span>
     </div>
   );
 }

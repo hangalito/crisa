@@ -7,4 +7,4 @@ export interface ChatMessage {
   createdAt: number;
 }
 
-export type RequestStatus = "idle" | "sending" | "waiting" | "error";
+export type RequestStatus = "idle" | "sending" | "waiting" | "streaming" | "error";

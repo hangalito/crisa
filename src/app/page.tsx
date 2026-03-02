@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 
 import { ChatContainer } from "@/components/chat/ChatContainer";
 import { InputBar } from "@/components/chat/InputBar";
 import { StatusIndicator } from "@/components/chat/StatusIndicator";
-import { ChatApiError, sendMessageToAgent } from "@/lib/chat-api";
+import { sendMessage, OllamaClientError } from "@/lib/ollamaClient";
 import type { ChatMessage, RequestStatus } from "@/types/chat";
 
 const INITIAL_MESSAGE: ChatMessage = {
@@ -15,75 +15,106 @@ const INITIAL_MESSAGE: ChatMessage = {
   createdAt: Date.now(),
 };
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function toSystemErrorMessage(text: string): ChatMessage {
-  return {
-    id: crypto.randomUUID(),
-    role: "system",
-    text,
-    createdAt: Date.now(),
-  };
-}
-
 export default function HomePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [status, setStatus] = useState<RequestStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const isRequestInProgress = status === "sending" || status === "waiting";
+  const isRequestInProgress = status === "sending" || status === "waiting" || status === "streaming";
 
   const onSendMessage = async (text: string) => {
     setErrorMessage(undefined);
     setStatus("sending");
 
+    const userMessageId = crypto.randomUUID();
+    const assistantMessageId = crypto.randomUUID();
+
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: userMessageId,
       role: "user",
       text,
       createdAt: Date.now(),
     };
 
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [
+      ...current,
+      userMessage,
+      {
+        id: assistantMessageId,
+        role: "agent",
+        text: "",
+        createdAt: Date.now(),
+      },
+    ]);
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, 60000);
 
     try {
-      // Keep feedback explicit by surfacing both async steps.
-      await sleep(180);
       setStatus("waiting");
 
-      const reply = await sendMessageToAgent(text);
+      const stream = sendMessage(
+        messages.concat(userMessage).map((m) => ({
+          role: m.role,
+          content: m.text,
+        })),
+        abortController.signal
+      );
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "agent",
-          text: reply,
-          createdAt: Date.now(),
-        },
-      ]);
+      let fullText = "";
+      for await (const chunk of stream) {
+        clearTimeout(timeoutId);
+        if (status !== "streaming") setStatus("streaming");
+        fullText += chunk;
+        setMessages((current) =>
+          current.map((m) =>
+            m.id === assistantMessageId ? { ...m, text: fullText } : m
+          )
+        );
+      }
+
       setStatus("idle");
     } catch (error) {
-      const friendlyMessage =
-        error instanceof ChatApiError
-          ? error.message
-          : "Connection lost. Please check your network and try again.";
+      if (process.env.NODE_ENV === "development") {
+        console.error("Chat Error:", error);
+      }
 
-      setMessages((current) => [
-        ...current,
-        toSystemErrorMessage(`Unable to complete request: ${friendlyMessage}`),
-      ]);
+      let friendlyMessage = "Connection problem. Please try again.";
+      if (error instanceof OllamaClientError) {
+        if (error.message === "Backend not configured.") {
+          friendlyMessage = "Backend not configured.";
+        } else if (error.message === "Request timed out") {
+          friendlyMessage = "Request timed out. Please try again.";
+        }
+      }
+
+      setMessages((current) =>
+        current.map((m) =>
+          m.id === assistantMessageId
+            ? { ...m, text: friendlyMessage }
+            : m
+        )
+      );
       setErrorMessage(friendlyMessage);
       setStatus("error");
+    } finally {
+      clearTimeout(timeoutId);
+      abortControllerRef.current = null;
     }
   };
 
   const headerSubtitle = useMemo(() => {
     if (status === "sending") return "Sending message...";
     if (status === "waiting") return "Waiting for response...";
-    if (status === "error") return "Connection lost";
-    return "Frontend-only phase";
-  }, [status]);
+    if (status === "streaming") return "Crisa is thinking...";
+    if (status === "error") return errorMessage || "Connection lost";
+    return "Online";
+  }, [status, errorMessage]);
 
   return (
     <main className="flex min-h-dvh flex-col bg-app-gradient text-slate-900 transition-colors dark:text-slate-100">
@@ -97,7 +128,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <ChatContainer messages={messages} isLoading={isRequestInProgress} />
+      <ChatContainer messages={messages} isLoading={status === "waiting"} />
 
       <footer className="sticky bottom-0 border-t border-pink-100/80 bg-white/70 px-3 py-3 backdrop-blur dark:border-pink-900/40 dark:bg-slate-950/70 sm:px-5">
         <InputBar disabled={isRequestInProgress} onSendMessage={onSendMessage} />
