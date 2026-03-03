@@ -48,17 +48,11 @@ async def verify_otp(payload: OTPVerify, response: Response):
     if verify_and_consume_otp(payload.email, payload.code):
         token = create_access_token(data={"sub": payload.email})
         
-        is_production = settings.ENVIRONMENT == "production"
-        
-        # Set HttpOnly cookie
+        # Set session cookie using centralized config
         response.set_cookie(
             key="session_token",
             value=token,
-            httponly=True,
-            secure=True if is_production else False,
-            samesite="lax",
-            path="/",
-            max_age=settings.ACCESS_TOKEN_EXPIRE_HOURS * 3600
+            **settings.COOKIE_PARAMS
         )
         return {"message": "Login realizado com sucesso."}
     
@@ -82,17 +76,12 @@ async def resend_otp(payload: OTPRequest):
 @router.post("/logout", response_model=Message)
 async def logout(response: Response):
     """Step 4: Clear session cookie."""
-    response.delete_cookie(
-        key="session_token",
-        path="/",
-        samesite="lax", # Match dev or common samesite for deletion
-    )
-    # Also set a cookie with immediate expiry in case delete_cookie is finicky with browsers
+    cookie_params = settings.COOKIE_PARAMS.copy()
+    cookie_params["max_age"] = 0
+    
     response.set_cookie(
         key="session_token",
         value="",
-        max_age=0,
-        httponly=True,
-        path="/"
+        **cookie_params
     )
     return {"message": "Sessão encerrada com sucesso."}
