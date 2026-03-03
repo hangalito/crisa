@@ -56,7 +56,7 @@ async def verify_otp(payload: OTPVerify, response: Response):
             value=token,
             httponly=True,
             secure=True if is_production else False,
-            samesite="none" if is_production else "lax",
+            samesite="lax",
             path="/",
             max_age=settings.ACCESS_TOKEN_EXPIRE_HOURS * 3600
         )
