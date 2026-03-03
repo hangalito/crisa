@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     
     # Frontend/CORS
     ENVIRONMENT: str = "development"
-    ALLOWED_ORIGINS: str = "http://localhost:3000"
+    ALLOWED_ORIGINS: str
     
     @property
     def AUTHORIZED_ORIGINS(self) -> List[str]:
