@@ -14,8 +14,21 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Crisa | Conversational AI Agent",
-  description: "Crisa frontend chat interface",
+  title: "Crisa — Conversational Intelligence",
+  description: "Discover Crisa, your Creative, Reasonable, Interactive and Supportive AI Agent.",
+  keywords: ["Crisa AI", "Conversational AI", "Assistant", "Portuguese AI"],
+  openGraph: {
+    title: "Crisa — Conversational Intelligence",
+    description: "Talk to Crisa, an AI agent designed for personalized, safe, and supportive conversations.",
+    type: "website",
+    locale: "pt_PT", // Portuguese AI
+    siteName: "Crisa",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Crisa — Conversational Intelligence",
+    description: "Talk to Crisa, an AI agent designed for personalized, safe, and supportive conversations.",
+  },
 };
 
 export default function RootLayout({

@@ -6,16 +6,17 @@ export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Paths that don't require authentication
-    const isAuthPage = pathname === "/login" || pathname === "/verify" || pathname === "/unauthorized";
+    const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/verify" || pathname === "/unauthorized";
 
     // If there's no token and user is trying to access a protected page
-    if (!token && !isAuthPage) {
+    if (!token && !isPublicPage) {
         return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // If there's a token and user is on an auth page, redirect to home (chat)
-    if (token && isAuthPage) {
-        return NextResponse.redirect(new URL("/", request.url));
+    // If there's a token and user is on an auth-only page, redirect to home (chat)
+    const isAuthOnlyPage = pathname === "/login" || pathname === "/verify" || pathname === "/unauthorized";
+    if (token && isAuthOnlyPage) {
+        return NextResponse.redirect(new URL("/chat", request.url));
     }
 
     return NextResponse.next();
